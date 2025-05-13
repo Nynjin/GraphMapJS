@@ -1,0 +1,28 @@
+services:
+  graph-map:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+      target: ${MODE:-start}
+    volumes:
+      - ${SSH_AUTH_SOCK}:/ssh-agent
+    environment:
+      - ENVIRONMENT=production
+      - PORT=${PORT:-8000}
+      - SSH_AUTH_SOCK=/ssh-agent
+      - TOKEN=${TOKEN:-}
+
+  nginx:
+    image: nginx:stable-alpine
+    environment:
+      - NGINX_HOST=${NGINX_HOST:-localhost}
+      - NGINX_PORT=${NGINX_PORT:-80}
+      - HOST=${HOST:-graph-map}
+      - PORT=${PORT:-3000}
+      - NGINX_TIMEOUT=${NGINX_TIMEOUT:-86400}
+    volumes:
+      - ./docker/nginx/templates:/etc/nginx/templates
+    ports:
+      - ${NGINX_PORT:-80}:${NGINX_PORT:-80}
+    depends_on:
+      - graph-map

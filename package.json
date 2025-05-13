@@ -12,8 +12,8 @@
     "build": "next build",
     "start": "next start",
     "prepare": "husky || true",
-    "format": "prettier --write",
-    "lint": "eslint --fix --max-warnings=0",
+    "format": "prettier . --write",
+    "lint": "eslint --fix",
     "commit": "cz --hook || true",
     "commitlint": "commitlint --edit"
   },
@@ -46,7 +46,7 @@
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.14",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^7.8.0"
   }
 }

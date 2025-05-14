@@ -18,6 +18,8 @@
     "commitlint": "commitlint --edit"
   },
   "dependencies": {
+    "@types/d3": "^7.4.3",
+    "d3": "^7.9.0",
     "lucide-react": "^0.510.0",
     "next": "^14.2.28",
     "react": "^18",

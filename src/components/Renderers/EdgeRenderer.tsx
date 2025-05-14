@@ -5,15 +5,18 @@ import { useGraphStore } from '@/hooks/useGraphStore'
 import { useUIStore } from '@/hooks/useUIStore'
 import { GraphNode } from '@/types/GraphNode'
 import { Tool } from '@/types/Tool'
+import { getSVGPoint } from '@/utils/getSVGPoint'
 
 import { useEffect, useState } from 'react'
 
 export function EdgeRenderer({
   currentTool,
   svgRef,
+  zoomTransform,
 }: {
   currentTool: Tool
   svgRef: React.RefObject<SVGSVGElement>
+  zoomTransform: d3.ZoomTransform
 }) {
   const { edges, addEdge, deleteEdge, nodes } = useGraphStore()
   const [isCreating, setIsCreating] = useState(false)
@@ -30,16 +33,13 @@ export function EdgeRenderer({
       const target = e.target as SVGElement
       if (target.closest('[data-edge-id]')) return // Prevent click on existing edges
 
-      const pt = svg.createSVGPoint()
-      pt.x = e.clientX
-      pt.y = e.clientY
-      const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse())
+      const point = getSVGPoint(svg, e.clientX, e.clientY, zoomTransform)
 
       if (!isCreating && !isDraggingNode) {
         // Start creating an edge if not already creating
         const node = nodes.find((n) => {
-          const dx = svgP.x - n.x
-          const dy = svgP.y - n.y
+          const dx = point.x - n.x
+          const dy = point.y - n.y
           return Math.sqrt(dx * dx + dy * dy) < NODE_RADIUS * 2
         })
 
@@ -50,8 +50,8 @@ export function EdgeRenderer({
       } else {
         // Finalize edge creation on second click
         const node = nodes.find((n) => {
-          const dx = svgP.x - n.x
-          const dy = svgP.y - n.y
+          const dx = point.x - n.x
+          const dy = point.y - n.y
           return Math.sqrt(dx * dx + dy * dy) < NODE_RADIUS * 2
         })
 
@@ -77,8 +77,8 @@ export function EdgeRenderer({
       const pt = svg.createSVGPoint()
       pt.x = e.clientX
       pt.y = e.clientY
-      const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse())
-      setMousePosition({ x: svgP.x, y: svgP.y })
+      const point = getSVGPoint(svg, pt.x, pt.y, zoomTransform)
+      setMousePosition({ x: point.x, y: point.y })
     }
 
     svg.addEventListener('click', handleClick)
@@ -87,7 +87,16 @@ export function EdgeRenderer({
       svg.removeEventListener('click', handleClick)
       svg.removeEventListener('mousemove', handleMouseMove)
     }
-  }, [currentTool, svgRef, nodes, addEdge, isCreating, startGraphNode, isDraggingNode])
+  }, [
+    currentTool,
+    svgRef,
+    nodes,
+    addEdge,
+    isCreating,
+    startGraphNode,
+    isDraggingNode,
+    zoomTransform,
+  ])
 
   // Handle edge deletion
   const handleClick = (id: string) => (e: React.MouseEvent) => {
@@ -105,7 +114,7 @@ export function EdgeRenderer({
         const toGraphNode = nodes.find((n) => n.id === edge.to)
 
         return fromGraphNode && toGraphNode ? (
-          <>
+          <g key={edge.id}>
             {/* Visible thin edge */}
             <line
               key={`visible-${edge.id}`}
@@ -133,7 +142,7 @@ export function EdgeRenderer({
                 e.currentTarget.style.cursor = 'pointer'
               }}
             />
-          </>
+          </g>
         ) : null
       })}
 

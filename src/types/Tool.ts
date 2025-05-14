@@ -1,1 +1,1 @@
-export type Tool = 'node' | 'edge' | 'delete' | null
+export type Tool = 'pointer' | 'span' | 'node' | 'edge' | 'delete' | null

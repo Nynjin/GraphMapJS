@@ -4,6 +4,7 @@ import { NODE_HITBOX, NODE_RADIUS } from '@/constants/Graph'
 import { useGraphStore } from '@/hooks/useGraphStore'
 import { useUIStore } from '@/hooks/useUIStore'
 import { Tool } from '@/types/Tool'
+import { getSVGPoint } from '@/utils/getSVGPoint'
 
 import { useEffect } from 'react'
 
@@ -27,9 +28,11 @@ function getNextAvailableLabel(nodes: { label: string }[]): string {
 export function GraphNodeRenderer({
   currentTool,
   svgRef,
+  zoomTransform,
 }: {
   currentTool: Tool
   svgRef: React.RefObject<SVGSVGElement>
+  zoomTransform: d3.ZoomTransform
 }) {
   const { nodes, addGraphNode, deleteGraphNode, moveGraphNode } = useGraphStore()
   const { setIsDraggingNode } = useUIStore()
@@ -44,14 +47,11 @@ export function GraphNodeRenderer({
       const target = e.target as SVGElement
       if (target.closest('[data-node-id]')) return
 
-      const pt = svg.createSVGPoint()
-      pt.x = e.clientX
-      pt.y = e.clientY
-      const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse())
+      const point = getSVGPoint(svg, e.clientX, e.clientY, zoomTransform)
 
       const isOverlapping = nodes.some((n) => {
-        const dx = svgP.x - n.x
-        const dy = svgP.y - n.y
+        const dx = point.x - n.x
+        const dy = point.y - n.y
         return Math.sqrt(dx * dx + dy * dy) < NODE_DIAMETER
       })
       if (isOverlapping)
@@ -60,14 +60,14 @@ export function GraphNodeRenderer({
         })
 
       const id = crypto.randomUUID()
-      addGraphNode({ id, x: svgP.x, y: svgP.y, label: getNextAvailableLabel(nodes) })
+      addGraphNode({ id, x: point.x, y: point.y, label: getNextAvailableLabel(nodes) })
     }
 
     svg.addEventListener('click', handleClick)
     return () => {
       svg.removeEventListener('click', handleClick)
     }
-  }, [currentTool, svgRef, nodes, addGraphNode])
+  }, [currentTool, svgRef, nodes, addGraphNode, zoomTransform])
 
   // Drag logic
   const handleDrag = (nodeId: string, nodeX: number, nodeY: number) => (e: React.MouseEvent) => {
@@ -78,14 +78,19 @@ export function GraphNodeRenderer({
       return
     }
 
-    const startX = e.clientX
-    const startY = e.clientY
+    if (currentTool !== 'pointer') return
 
+    const svg = svgRef.current
+    if (!svg) return
+
+    const startPoint = getSVGPoint(svg, e.clientX, e.clientY, zoomTransform)
     const onMove = (moveEvent: MouseEvent) => {
       setIsDraggingNode(true)
 
-      const dx = moveEvent.clientX - startX
-      const dy = moveEvent.clientY - startY
+      const movePoint = getSVGPoint(svg, moveEvent.clientX, moveEvent.clientY, zoomTransform)
+
+      const dx = movePoint.x - startPoint.x
+      const dy = movePoint.y - startPoint.y
       const newX = nodeX + dx
       const newY = nodeY + dy
 

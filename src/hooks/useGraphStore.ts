@@ -1,17 +1,18 @@
+// GraphStore update
 import { Edge } from '@/types/Edge'
-import { Node } from '@/types/Node'
+import { GraphNode } from '@/types/GraphNode'
 
 import { create } from 'zustand'
 
 interface GraphState {
-  nodes: Node[]
+  nodes: GraphNode[]
   edges: Edge[]
-  addNode: (node: Node) => void
+  addGraphNode: (node: GraphNode) => void
   addEdge: (edge: Edge) => void
-  moveNode: (id: string, x: number, y: number) => void
-  deleteNode: (id: string) => void
+  moveGraphNode: (id: string, x: number, y: number) => void
+  deleteGraphNode: (id: string) => void
   deleteEdge: (id: string) => void
-  updateNode: (id: string, node: Node) => void
+  updateGraphNode: (id: string, node: GraphNode) => void
   updateEdge: (id: string, edge: Edge) => void
 }
 
@@ -19,18 +20,18 @@ export const useGraphStore = create<GraphState>((set) => ({
   nodes: [],
   edges: [],
 
-  addNode: (node) => {
+  addGraphNode: (node) => {
     set((state) => ({ nodes: [...state.nodes, node] }))
   },
   addEdge: (edge) => {
-    set((state) => ({ edges: [...state.edges, edge] }))
+    set((state) => ({ edges: [...state.edges, edge], draftEdge: null }))
   },
-  moveNode: (id, x, y) => {
+  moveGraphNode: (id, x, y) => {
     set((state) => ({
       nodes: state.nodes.map((n) => (n.id === id ? { ...n, x, y } : n)),
     }))
   },
-  deleteNode: (id) => {
+  deleteGraphNode: (id) => {
     set((state) => ({
       nodes: state.nodes.filter((n) => n.id !== id),
       edges: state.edges.filter((e) => e.from !== id && e.to !== id),
@@ -41,7 +42,7 @@ export const useGraphStore = create<GraphState>((set) => ({
       edges: state.edges.filter((e) => e.id !== id),
     }))
   },
-  updateNode: (id, node) => {
+  updateGraphNode: (id, node) => {
     set((state) => ({
       nodes: state.nodes.map((n) => (n.id === id ? { ...n, ...node } : n)),
     }))

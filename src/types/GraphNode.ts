@@ -1,4 +1,4 @@
-export interface Node {
+export interface GraphNode {
   id: string
   label: string
   x: number

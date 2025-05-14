@@ -11,7 +11,7 @@ export function NodeRenderer({
   currentTool: Tool
   onClickNode: (nodeId: string, e: React.MouseEvent) => void
 }) {
-  const { deleteNode } = useGraphStore()
+  const { moveNode, deleteNode } = useGraphStore()
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -21,6 +21,42 @@ export function NodeRenderer({
     } else if (currentTool === 'edge') {
       onClickNode(node.id, e)
     }
+  }
+
+  const handleDrag = (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const startNodeX = node.x
+    const startNodeY = node.y
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const deltaY = moveEvent.clientY - startY
+
+      const newX = startNodeX + deltaX
+      const newY = startNodeY + deltaY
+
+      const isColliding = useGraphStore.getState().nodes.some((n) => {
+        if (n.id === node.id) return false // Skip self
+        const dx = n.x - newX
+        const dy = n.y - newY
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        return distance < 24 // Adjust this value based on your node size
+      })
+      if (isColliding) return
+
+      moveNode(node.id, startNodeX + deltaX, startNodeY + deltaY)
+    }
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
   }
 
   return (
@@ -33,6 +69,7 @@ export function NodeRenderer({
         fill="transparent"
         stroke="transparent"
         onClick={handleClick}
+        onMouseDown={handleDrag}
         style={{ cursor: currentTool === 'edge' ? 'crosshair' : 'pointer' }}
       />
 

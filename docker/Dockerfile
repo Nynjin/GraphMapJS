@@ -4,7 +4,8 @@ FROM node:lts-alpine
 FROM node:lts-alpine AS base
 
 # Install dependencies
-RUN apk update
+RUN apk update && \
+  apk upgrade
 
 WORKDIR /app
 
@@ -16,14 +17,14 @@ COPY . /app
 FROM base AS build
 
 # Run the app
-ENTRYPOINT npm run build -- -p ${PORT}
+ENTRYPOINT npm i && npm run build -- -p ${PORT}
 
 
 # STAGE 2: Run the app as dev
 FROM base AS dev
 
 # Run the app
-ENTRYPOINT npm run dev -- -p ${PORT}
+ENTRYPOINT npm i && npm run dev -- -p ${PORT}
 
 
 
@@ -31,7 +32,7 @@ ENTRYPOINT npm run dev -- -p ${PORT}
 FROM build AS test
 
 # Run the app
-ENTRYPOINT npm run test -- -p ${PORT}
+ENTRYPOINT npm i && npm run test -- -p ${PORT}
 
 
 
@@ -39,4 +40,4 @@ ENTRYPOINT npm run test -- -p ${PORT}
 FROM build AS start
 
 # Run the app
-ENTRYPOINT npm run start -- -p ${PORT}
+ENTRYPOINT npm i && npm run start -- -p ${PORT}

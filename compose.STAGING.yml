@@ -4,12 +4,8 @@ services:
       context: .
       dockerfile: ./docker/Dockerfile
       target: ${MODE:-dev}
-    volumes:
-      - ${SSH_AUTH_SOCK}:/ssh-agent
     environment:
       - ENVIRONMENT=staging
       - ${PORT:-3000}:${PORT:-3000}
-      - SSH_AUTH_SOCK=/ssh-agent
-      - TOKEN=${TOKEN:-}
     ports:
       - ${PORT:-3000}:${PORT:-3000}

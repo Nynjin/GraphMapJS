@@ -2,6 +2,9 @@ import { useGraphStore } from '@/hooks/useGraphStore'
 import { Node } from '@/types/Node'
 import { Tool } from '@/types/Tool'
 
+export const NODE_RADIUS = 12
+const NODE_HITBOX_MULTIPLIER = 1.2
+
 export function NodeRenderer({
   node,
   currentTool,
@@ -43,7 +46,7 @@ export function NodeRenderer({
         const dx = n.x - newX
         const dy = n.y - newY
         const distance = Math.sqrt(dx * dx + dy * dy)
-        return distance < 24 // Adjust this value based on your node size
+        return distance < NODE_RADIUS * 2
       })
       if (isColliding) return
 
@@ -65,7 +68,7 @@ export function NodeRenderer({
       <circle
         cx={node.x}
         cy={node.y}
-        r={15} // larger than visual node
+        r={NODE_RADIUS * NODE_HITBOX_MULTIPLIER} // larger than visual node
         fill="transparent"
         stroke="transparent"
         onClick={handleClick}
@@ -77,7 +80,7 @@ export function NodeRenderer({
       <circle
         cx={node.x}
         cy={node.y}
-        r={12}
+        r={NODE_RADIUS}
         fill="skyblue"
         stroke="#444"
         pointerEvents="none" // allows clicks to pass through to hitbox

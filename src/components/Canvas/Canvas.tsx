@@ -2,13 +2,16 @@
 
 import { EdgeRenderer } from '@/components/Renderers/EdgeRenderer'
 import { GridRenderer } from '@/components/Renderers/GridRenderer'
-import { NodeRenderer } from '@/components/Renderers/NodeRenderer'
+import { NODE_RADIUS, NodeRenderer } from '@/components/Renderers/NodeRenderer'
 import { TempEdgeRenderer } from '@/components/Renderers/TempEdgeRenderer'
 import { useGraphStore } from '@/hooks/useGraphStore'
 import { TempEdge } from '@/types/TempEdge'
 import { Tool } from '@/types/Tool'
+import { IsOverlapping } from '@/utils/IsOverlapping'
 
 import { useEffect, useRef, useState } from 'react'
+
+import { Toaster, toast } from 'sonner'
 
 export function Canvas({
   currentTool,
@@ -41,6 +44,13 @@ export function Canvas({
     if (currentTool === 'node') {
       const { x, y } = getCoords(e)
       const id = crypto.randomUUID()
+      if (IsOverlapping(x, y, NODE_RADIUS, nodes)) {
+        // Check if the new node overlaps with existing nodes
+        toast.warning('Node overlaps with existing nodes', {
+          description: 'Please choose a different location.',
+        })
+        return
+      }
       addNode({ id, x, y, label: id.slice(0, 4) })
     }
   }
@@ -85,6 +95,7 @@ export function Canvas({
 
   return (
     <div className="relative w-full h-full">
+      <Toaster></Toaster>
       <svg
         ref={svgRef}
         className="w-full h-full bg-white"

@@ -3,6 +3,7 @@
 import { EdgeRenderer } from '@/components/Renderers/EdgeRenderer'
 import { GraphNodeRenderer } from '@/components/Renderers/GraphNodeRenderer'
 import { GridRenderer } from '@/components/Renderers/GridRenderer'
+import { useUIStore } from '@/hooks/useUIStore'
 import { Tool } from '@/types/Tool'
 
 import { useEffect, useRef, useState } from 'react'
@@ -19,6 +20,7 @@ export function Canvas({
   const svgRef = useRef<SVGSVGElement>(null)
   const gRef = useRef<SVGGElement>(null)
   const [zoomTransform, setZoomTransform] = useState(d3.zoomIdentity)
+  const { panEnabled } = useUIStore()
 
   useEffect(() => {
     if (!svgRef.current || !gRef.current) return
@@ -36,8 +38,8 @@ export function Canvas({
 
     svg.call(zoom)
 
-    if (currentTool !== 'span') svg.call(zoom).on('mousedown.zoom', null)
-  }, [currentTool])
+    if (!panEnabled) svg.call(zoom).on('mousedown.zoom', null)
+  }, [panEnabled])
 
   return (
     <div className="relative w-full h-full">

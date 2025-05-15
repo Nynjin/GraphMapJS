@@ -63,6 +63,7 @@ export function EdgeRenderer({
           })
           setIsCreating(false)
           setStartGraphNode(null)
+          setMousePosition(null)
         } else {
           // Cancel edge creation if clicked outside a node
           setIsCreating(false)

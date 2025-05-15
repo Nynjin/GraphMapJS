@@ -10,6 +10,9 @@ interface UIState {
   // Optional for future use:
   selectedNodeIds: string[]
   toggleSelectedNode: (id: string) => void
+
+  panEnabled: boolean
+  setPanEnabled: (enabled: boolean) => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -30,5 +33,10 @@ export const useUIStore = create<UIState>((set) => ({
         ? state.selectedNodeIds.filter((i) => i !== id)
         : [...state.selectedNodeIds, id],
     }))
+  },
+
+  panEnabled: true,
+  setPanEnabled: (enabled) => {
+    set({ panEnabled: enabled })
   },
 }))

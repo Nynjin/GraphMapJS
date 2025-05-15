@@ -35,7 +35,7 @@ export function GraphNodeRenderer({
   zoomTransform: d3.ZoomTransform
 }) {
   const { nodes, addGraphNode, deleteGraphNode, moveGraphNode } = useGraphStore()
-  const { setIsDraggingNode } = useUIStore()
+  const { setPanEnabled, setIsDraggingNode } = useUIStore()
 
   // Handle canvas clicks for node creation
   useEffect(() => {
@@ -77,8 +77,6 @@ export function GraphNodeRenderer({
       deleteGraphNode(nodeId)
       return
     }
-
-    if (currentTool !== 'pointer') return
 
     const svg = svgRef.current
     if (!svg) return
@@ -135,6 +133,12 @@ export function GraphNodeRenderer({
             stroke="transparent"
             onClick={handleClick(node.id)}
             onMouseDown={handleDrag(node.id, node.x, node.y)}
+            onMouseOver={() => {
+              setPanEnabled(false)
+            }}
+            onMouseOut={() => {
+              setPanEnabled(true)
+            }}
             style={{ cursor: currentTool === 'edge' ? 'crosshair' : 'pointer' }}
           />
           {/* Visible node */}

@@ -31,6 +31,17 @@ export function Canvas({
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 5])
+      .filter((event: PointerEvent) => {
+        // Enable zooming with mouse wheel
+        if (event.type === 'wheel') return true
+
+        // Enable panning only with middle mouse button
+        if (event.type === 'mousedown') {
+          return panEnabled && (event.button === 1 || event.button === 0)
+        }
+
+        return false
+      })
       .on('zoom', (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
         g.attr('transform', event.transform.toString())
         setZoomTransform(event.transform)
@@ -38,7 +49,14 @@ export function Canvas({
 
     svg.call(zoom)
 
-    if (!panEnabled) svg.call(zoom).on('mousedown.zoom', null)
+    // Prevent default middle-click behavior (usually autoscroll)
+    svg.on('mousedown', (event: PointerEvent) => {
+      if (event.button === 1) {
+        event.preventDefault()
+      }
+    })
+
+    // if (!panEnabled) svg.call(zoom).on('mousedown.zoom', null)
   }, [panEnabled])
 
   return (

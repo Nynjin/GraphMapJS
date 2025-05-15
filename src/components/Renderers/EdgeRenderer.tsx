@@ -2,7 +2,6 @@
 
 import { EDGE_HITBOX, EDGE_WIDTH, NODE_RADIUS } from '@/constants/Graph'
 import { useGraphStore } from '@/hooks/useGraphStore'
-import { useUIStore } from '@/hooks/useUIStore'
 import { GraphNode } from '@/types/GraphNode'
 import { Tool } from '@/types/Tool'
 import { getSVGPoint } from '@/utils/getSVGPoint'
@@ -22,20 +21,33 @@ export function EdgeRenderer({
   const [isCreating, setIsCreating] = useState(false)
   const [startGraphNode, setStartGraphNode] = useState<GraphNode | null>(null)
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null)
-  const { isDraggingNode } = useUIStore()
 
   // Handle canvas clicks for edge creation
   useEffect(() => {
     const svg = svgRef.current
-    if (!svg || currentTool !== 'edge') return
+    if (!svg || currentTool !== 'edge') {
+      setIsCreating(false)
+      setStartGraphNode(null)
+      setMousePosition(null)
+      return
+    }
 
-    const handleClick = (e: MouseEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsCreating(false)
+        setStartGraphNode(null)
+        setMousePosition(null)
+      }
+      return
+    }
+
+    const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as SVGElement
       if (target.closest('[data-edge-id]')) return // Prevent click on existing edges
 
       const point = getSVGPoint(svg, e.clientX, e.clientY, zoomTransform)
 
-      if (!isCreating && !isDraggingNode) {
+      if (!isCreating) {
         // Start creating an edge if not already creating
         const node = nodes.find((n) => {
           const dx = point.x - n.x
@@ -82,25 +94,18 @@ export function EdgeRenderer({
       setMousePosition({ x: point.x, y: point.y })
     }
 
-    svg.addEventListener('click', handleClick)
+    svg.addEventListener('mousedown', handleMouseDown)
     svg.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('keydown', handleKeyDown)
     return () => {
-      svg.removeEventListener('click', handleClick)
+      svg.removeEventListener('mousedown', handleMouseDown)
       svg.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [
-    currentTool,
-    svgRef,
-    nodes,
-    addEdge,
-    isCreating,
-    startGraphNode,
-    isDraggingNode,
-    zoomTransform,
-  ])
+  }, [currentTool, svgRef, nodes, addEdge, isCreating, startGraphNode, zoomTransform])
 
   // Handle edge deletion
-  const handleClick = (id: string) => (e: React.MouseEvent) => {
+  const handleMouseDown = (id: string) => (e: React.MouseEvent) => {
     e.stopPropagation()
     if (currentTool === 'delete') {
       deleteEdge(id)
@@ -138,7 +143,7 @@ export function EdgeRenderer({
               y2={toGraphNode.y}
               stroke="transparent"
               strokeWidth={EDGE_HITBOX} // Bigger click area
-              onClick={handleClick(edge.id)}
+              onMouseDown={handleMouseDown(edge.id)}
               onMouseOver={(e) => {
                 e.currentTarget.style.cursor = 'pointer'
               }}

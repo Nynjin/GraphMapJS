@@ -2,7 +2,6 @@
 
 import { NODE_HITBOX, NODE_RADIUS } from '@/constants/Graph'
 import { useGraphStore } from '@/hooks/useGraphStore'
-import { useUIStore } from '@/hooks/useUIStore'
 import { Tool } from '@/types/Tool'
 import { getSVGPoint } from '@/utils/getSVGPoint'
 
@@ -29,13 +28,14 @@ export function GraphNodeRenderer({
   currentTool,
   svgRef,
   zoomTransform,
+  setPanEnabled,
 }: {
   currentTool: Tool
   svgRef: React.RefObject<SVGSVGElement>
   zoomTransform: d3.ZoomTransform
+  setPanEnabled: (enabled: boolean) => void
 }) {
   const { nodes, addGraphNode, deleteGraphNode, moveGraphNode } = useGraphStore()
-  const { setPanEnabled, setIsDraggingNode } = useUIStore()
 
   // Handle canvas clicks for node creation
   useEffect(() => {
@@ -78,13 +78,13 @@ export function GraphNodeRenderer({
       return
     }
 
+    if (currentTool === 'edge') return
+
     const svg = svgRef.current
     if (!svg) return
 
     const startPoint = getSVGPoint(svg, e.clientX, e.clientY, zoomTransform)
     const onMove = (moveEvent: MouseEvent) => {
-      setIsDraggingNode(true)
-
       const movePoint = getSVGPoint(svg, moveEvent.clientX, moveEvent.clientY, zoomTransform)
 
       const dx = movePoint.x - startPoint.x
@@ -106,7 +106,6 @@ export function GraphNodeRenderer({
     const onUp = () => {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
-      setIsDraggingNode(false)
     }
 
     window.addEventListener('mousemove', onMove)

@@ -1,7 +1,6 @@
 'use client'
 
 import { Canvas } from '@/components/Canvas/Canvas'
-import { Toolbar } from '@/components/Toolbar'
 import { Tool } from '@/types/Tool'
 
 import { useState } from 'react'
@@ -12,7 +11,6 @@ export default function HomePage() {
   return (
     <div className="relative w-full h-screen overflow-hidden">
       <Canvas currentTool={tool} setCurrentTool={setTool} />
-      <Toolbar currentTool={tool} onSelectTool={setTool} />
     </div>
   )
 }

@@ -3,25 +3,24 @@
 import { NODE_HITBOX, NODE_RADIUS } from '@/constants/Graph'
 import { useGraphStore } from '@/hooks/useGraphStore'
 import { Tool } from '@/types/Tool'
+import { getNextAvailableLabel } from '@/utils/getNextAvailableLabel'
 import { getSVGPoint } from '@/utils/getSVGPoint'
 
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 
 import { toast } from 'sonner'
 
 const NODE_DIAMETER = NODE_RADIUS * 2
 
-function getNextAvailableLabel(nodes: { label: string }[]): string {
-  const used = new Set<number>()
-
-  for (const node of nodes) {
-    const match = node.label.match(/^N(\d+)$/)
-    if (match) used.add(parseInt(match[1]))
+function getEventClientPoint(e: MouseEvent | TouchEvent) {
+  if ('touches' in e && e.touches.length > 0) {
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  } else if ('changedTouches' in e && e.changedTouches.length > 0) {
+    return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }
+  } else if ('clientX' in e && 'clientY' in e) {
+    return { x: e.clientX, y: e.clientY }
   }
-
-  let i = 1
-  while (used.has(i)) i++
-  return `N${i.toString()}`
+  throw new Error('Invalid event object for pointer coordinates')
 }
 
 export function GraphNodeRenderer({
@@ -36,14 +35,18 @@ export function GraphNodeRenderer({
   setPanEnabled: (enabled: boolean) => void
 }) {
   const { nodes, addGraphNode, deleteGraphNode, moveGraphNode } = useGraphStore()
+  const nodesRef = React.useRef(nodes)
 
-  // Handle canvas clicks for node creation
+  useEffect(() => {
+    nodesRef.current = nodes
+  }, [nodes])
+
+  // ─── Node Creation ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const svg = svgRef.current
     if (!svg || currentTool !== 'node') return
 
     const handleClick = (e: MouseEvent) => {
-      // Prevent adding if clicking on a node
       const target = e.target as SVGElement
       if (target.closest('[data-node-id]')) return
 
@@ -54,13 +57,20 @@ export function GraphNodeRenderer({
         const dy = point.y - n.y
         return Math.sqrt(dx * dx + dy * dy) < NODE_DIAMETER
       })
-      if (isOverlapping)
-        return toast.warning('Too close to existing node', {
+
+      if (isOverlapping) {
+        toast.warning('Too close to existing node', {
           description: 'Please choose a different location.',
         })
+        return
+      }
 
-      const id = crypto.randomUUID()
-      addGraphNode({ id, x: point.x, y: point.y, label: getNextAvailableLabel(nodes) })
+      addGraphNode({
+        id: crypto.randomUUID(),
+        x: point.x,
+        y: point.y,
+        label: getNextAvailableLabel(nodes),
+      })
     }
 
     svg.addEventListener('click', handleClick)
@@ -69,9 +79,65 @@ export function GraphNodeRenderer({
     }
   }, [currentTool, svgRef, nodes, addGraphNode, zoomTransform])
 
-  // Drag logic
-  const handleDrag = (nodeId: string, nodeX: number, nodeY: number) => (e: React.MouseEvent) => {
+  // ─── Unified Drag Handler ───────────────────────────────────────────────────────
+  function beginDrag(
+    nodeId: string,
+    nodeX: number,
+    nodeY: number,
+    startClient: { x: number; y: number },
+  ) {
+    const svg = svgRef.current
+    if (!svg) return
+
+    const startPoint = getSVGPoint(svg, startClient.x, startClient.y, zoomTransform)
+
+    const onMove = (event: MouseEvent | TouchEvent) => {
+      event.stopPropagation()
+
+      try {
+        const client = getEventClientPoint(event)
+        const movePoint = getSVGPoint(svg, client.x, client.y, zoomTransform)
+
+        const dx = movePoint.x - startPoint.x
+        const dy = movePoint.y - startPoint.y
+        const newX = nodeX + dx
+        const newY = nodeY + dy
+
+        // Prevent collision only with other nodes
+        const isColliding = nodesRef.current.some((n) => {
+          if (n.id === nodeId) return false
+          const ddx = n.x - newX
+          const ddy = n.y - newY
+          return Math.sqrt(ddx * ddx + ddy * ddy) < NODE_DIAMETER
+        })
+
+        if (!isColliding) {
+          moveGraphNode(nodeId, newX, newY)
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    const onEnd = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onEnd)
+      window.removeEventListener('touchmove', onEnd)
+      window.removeEventListener('touchend', onEnd)
+      setPanEnabled(true)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onEnd)
+    window.addEventListener('touchmove', onMove)
+    window.addEventListener('touchend', onEnd)
+  }
+
+  function handlePointerDown(e: React.PointerEvent, nodeId: string, nodeX: number, nodeY: number) {
+    e.preventDefault()
     e.stopPropagation()
+
+    if (!nodeId) return
 
     if (currentTool === 'delete') {
       deleteGraphNode(nodeId)
@@ -80,75 +146,66 @@ export function GraphNodeRenderer({
 
     if (currentTool === 'edge') return
 
-    const svg = svgRef.current
-    if (!svg) return
+    setPanEnabled(false)
 
-    const startPoint = getSVGPoint(svg, e.clientX, e.clientY, zoomTransform)
-    const onMove = (moveEvent: MouseEvent) => {
-      const movePoint = getSVGPoint(svg, moveEvent.clientX, moveEvent.clientY, zoomTransform)
+    const client = { x: e.clientX, y: e.clientY }
 
-      const dx = movePoint.x - startPoint.x
-      const dy = movePoint.y - startPoint.y
-      const newX = nodeX + dx
-      const newY = nodeY + dy
-
-      const isColliding = useGraphStore.getState().nodes.some((n) => {
-        if (n.id === nodeId) return false
-        const ddx = n.x - newX
-        const ddy = n.y - newY
-        return Math.sqrt(ddx * ddx + ddy * ddy) < NODE_DIAMETER
-      })
-      if (!isColliding) {
-        moveGraphNode(nodeId, newX, newY)
-      }
-    }
-
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+    beginDrag(nodeId, nodeX, nodeY, client)
   }
 
-  const handleClick = (id: string) => (e: React.MouseEvent) => {
+  function handleNodeClick(e: React.MouseEvent, nodeId: string) {
     e.stopPropagation()
-    if (currentTool === 'delete') {
-      deleteGraphNode(id)
-    }
+    if (currentTool === 'delete') deleteGraphNode(nodeId)
   }
 
+  // ─── Render ─────────────────────────────────────────────────────────────────────
   return (
     <>
       {nodes.map((node) => (
         <g key={node.id} data-node-id={node.id}>
-          {/* Large invisible hitbox for easier click/drag */}
+          {/* Hitbox */}
           <circle
             cx={node.x}
             cy={node.y}
             r={NODE_HITBOX}
             fill="transparent"
             stroke="transparent"
-            onClick={handleClick(node.id)}
-            onMouseDown={handleDrag(node.id, node.x, node.y)}
+            style={{ cursor: currentTool === 'edge' ? 'crosshair' : 'pointer' }}
+            onClick={(e) => {
+              handleNodeClick(e, node.id)
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              deleteGraphNode(node.id)
+            }}
+            onPointerDown={(e) => {
+              setPanEnabled(false)
+              handlePointerDown(e, node.id, node.x, node.y)
+            }}
+            onPointerUp={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setPanEnabled(true)
+            }}
             onMouseOver={() => {
               setPanEnabled(false)
             }}
             onMouseOut={() => {
               setPanEnabled(true)
             }}
-            style={{ cursor: currentTool === 'edge' ? 'crosshair' : 'pointer' }}
           />
-          {/* Visible node */}
+
+          {/* Visual Node */}
           <circle
             cx={node.x}
             cy={node.y}
             r={NODE_RADIUS}
-            fill="skyblue"
+            fill={'skyblue'}
             stroke="#444"
             pointerEvents="none"
           />
+
+          {/* Label */}
           <text
             x={node.x}
             y={node.y - 16}

@@ -92,6 +92,7 @@ export function GraphNodeRenderer({
     const startPoint = getSVGPoint(svg, startClient.x, startClient.y, zoomTransform)
 
     const onMove = (event: MouseEvent | TouchEvent) => {
+      event.preventDefault()
       event.stopPropagation()
 
       try {
@@ -103,7 +104,6 @@ export function GraphNodeRenderer({
         const newX = nodeX + dx
         const newY = nodeY + dy
 
-        // Prevent collision only with other nodes
         const isColliding = nodesRef.current.some((n) => {
           if (n.id === nodeId) return false
           const ddx = n.x - newX
@@ -120,11 +120,12 @@ export function GraphNodeRenderer({
     }
 
     const onEnd = () => {
+      setPanEnabled(true)
+
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onEnd)
-      window.removeEventListener('touchmove', onEnd)
+      window.removeEventListener('touchmove', onMove)
       window.removeEventListener('touchend', onEnd)
-      setPanEnabled(true)
     }
 
     window.addEventListener('pointermove', onMove)
@@ -133,7 +134,12 @@ export function GraphNodeRenderer({
     window.addEventListener('touchend', onEnd)
   }
 
-  function handlePointerDown(e: React.PointerEvent, nodeId: string, nodeX: number, nodeY: number) {
+  function handlePointerDown(
+    e: React.PointerEvent | React.MouseEvent,
+    nodeId: string,
+    nodeX: number,
+    nodeY: number,
+  ) {
     e.preventDefault()
     e.stopPropagation()
 
@@ -154,6 +160,7 @@ export function GraphNodeRenderer({
   }
 
   function handleNodeClick(e: React.MouseEvent, nodeId: string) {
+    setPanEnabled(false)
     e.stopPropagation()
     if (currentTool === 'delete') deleteGraphNode(nodeId)
   }
@@ -178,11 +185,22 @@ export function GraphNodeRenderer({
               e.preventDefault()
               deleteGraphNode(node.id)
             }}
+            onMouseDown={(e) => {
+              setPanEnabled(false)
+              handlePointerDown(e, node.id, node.x, node.y)
+            }}
+            onMouseUp={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setPanEnabled(true)
+            }}
             onPointerDown={(e) => {
+              if (e.pointerType !== 'touch') return
               setPanEnabled(false)
               handlePointerDown(e, node.id, node.x, node.y)
             }}
             onPointerUp={(e) => {
+              if (e.pointerType !== 'touch') return
               e.preventDefault()
               e.stopPropagation()
               setPanEnabled(true)

@@ -28,10 +28,6 @@ display_usage() {
     echo ""
     echo "  --fresh/-f                  Rebuilds the entire image"
     echo ""
-    echo "  --ssh-path/-p=<path>        Path to the SSH config directory"
-    echo ""
-    echo "  --token/-k=<token>          Private token to use for git operations"
-    echo ""
     echo "  --help/-h                   Display this help message"
     echo ""
     echo "Default values:"
@@ -39,12 +35,10 @@ display_usage() {
     echo "  Environment: production"
     echo "  Port:       8000"
     echo "  Fresh:      false"
-    echo "  SSH path:   $HOME/.ssh"
-    echo "  Token:      None"
     echo ""
     echo "Example:"
-    echo "  $0 --mode=build --environment=production --port=8000 --fresh --ssh-path=$HOME/.ssh --token=123"
-    echo "  $0 -m=build -e=p -p=8000 -f -p=$HOME/.ssh -k=123"
+    echo "  $0 --mode=build --environment=production --port=8000 --fresh"
+    echo "  $0 -m=build -e=p -p=8000 -f"
     echo ""
     echo "Overrides:"
     echo "  The environment variables will override the default values."
@@ -54,7 +48,7 @@ display_usage() {
 # Function to delete docker container
 delete_container() {
     service_name="graph-map"
-    container_name="${project_name}-${service_name}"
+    container_name="$(echo "${project_name}-${service_name}" | tr '[:upper:]' '[:lower:]')"
     
     # Handle deletion of replicas
     containers=$(docker ps -a --filter "name=$container_name" --format "{{.ID}}")
@@ -90,12 +84,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --fresh | -f)
             FRESH=true
-            ;;
-        --ssh-path=* | -p=*)
-            export SSH_PATH="${option#*=}"
-            ;;
-        --token=* | -k=*)
-            export TOKEN="${option#*=}"
             ;;
         --help | -h)
             display_usage

@@ -4,13 +4,9 @@ services:
       context: .
       dockerfile: ./docker/Dockerfile
       target: ${MODE:-start}
-    volumes:
-      - ${SSH_AUTH_SOCK}:/ssh-agent
     environment:
       - ENVIRONMENT=production
       - PORT=${PORT:-8000}
-      - SSH_AUTH_SOCK=/ssh-agent
-      - TOKEN=${TOKEN:-}
 
   nginx:
     image: nginx:stable-alpine

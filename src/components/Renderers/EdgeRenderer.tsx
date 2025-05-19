@@ -41,11 +41,17 @@ export function EdgeRenderer({
       return
     }
 
-    const handleMouseDown = (e: MouseEvent) => {
+    const handleMouseDown = (e: MouseEvent | TouchEvent) => {
       const target = e.target as SVGElement
       if (target.closest('[data-edge-id]')) return // Prevent click on existing edges
 
-      const point = getSVGPoint(svg, e.clientX, e.clientY, zoomTransform)
+      let point: SVGPoint
+
+      if (e instanceof TouchEvent) {
+        point = getSVGPoint(svg, e.touches[0].clientX, e.touches[0].clientY, zoomTransform)
+      } else {
+        point = getSVGPoint(svg, e.clientX, e.clientY, zoomTransform)
+      }
 
       if (!isCreating) {
         // Start creating an edge if not already creating
@@ -85,21 +91,32 @@ export function EdgeRenderer({
       }
     }
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
       if (!isCreating) return
       const pt = svg.createSVGPoint()
-      pt.x = e.clientX
-      pt.y = e.clientY
+
+      if (e instanceof TouchEvent) {
+        pt.x = e.touches[0].clientX
+        pt.y = e.touches[0].clientY
+      } else {
+        pt.x = e.clientX
+        pt.y = e.clientY
+      }
+
       const point = getSVGPoint(svg, pt.x, pt.y, zoomTransform)
       setMousePosition({ x: point.x, y: point.y })
     }
 
     svg.addEventListener('mousedown', handleMouseDown)
     svg.addEventListener('mousemove', handleMouseMove)
+    svg.addEventListener('touchstart', handleMouseDown)
+    svg.addEventListener('touchmove', handleMouseMove)
     window.addEventListener('keydown', handleKeyDown)
     return () => {
       svg.removeEventListener('mousedown', handleMouseDown)
       svg.removeEventListener('mousemove', handleMouseMove)
+      svg.removeEventListener('touchstart', handleMouseDown)
+      svg.removeEventListener('touchmove', handleMouseMove)
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [currentTool, svgRef, nodes, addEdge, isCreating, startGraphNode, zoomTransform])
@@ -143,7 +160,11 @@ export function EdgeRenderer({
               y2={toGraphNode.y}
               stroke="transparent"
               strokeWidth={EDGE_HITBOX} // Bigger click area
-              onMouseDown={handleMouseDown(edge.id)}
+              onPointerDown={(e) => {
+                if (e.pointerType !== 'touch') return
+                handleMouseDown(edge.id)
+              }}
+              onClick={handleMouseDown(edge.id)}
               onMouseOver={(e) => {
                 e.currentTarget.style.cursor = 'pointer'
               }}
